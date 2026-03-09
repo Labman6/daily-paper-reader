@@ -516,22 +516,30 @@ window.$docsify = {
             if (chatRoot) {
               const items = chatRoot.querySelectorAll('.msg-item');
               const lines = [];
+              const inferSpeaker =
+                window.DPRZoteroChatUtils &&
+                typeof window.DPRZoteroChatUtils.inferSpeaker === 'function'
+                  ? window.DPRZoteroChatUtils.inferSpeaker
+                  : ({ roleText = '', className = '' } = {}) => {
+                      const role = String(roleText || '').trim();
+                      const cls = String(className || '').trim();
+                      if (role.includes('思考过程')) return '';
+                      if (role.includes('你')) return 'User';
+                      if (role.includes('助手')) return 'AI';
+                      if (/\bmsg-content-user\b/.test(cls)) return 'User';
+                      if (/\bmsg-content-ai\b/.test(cls)) return 'AI';
+                      return '';
+                    };
               items.forEach((item) => {
                 const roleEl = item.querySelector('.msg-role');
                 const contentEl = item.querySelector('.msg-content');
-                if (!roleEl || !contentEl) return;
-                const roleText = roleEl.textContent || '';
-                // 显式排除“思考过程”类消息（thinking）
-                if (roleText.includes('思考过程')) return;
-                let speaker = '';
-                if (roleText.includes('你')) {
-                  speaker = 'User';
-                } else if (roleText.includes('助手')) {
-                  speaker = 'AI';
-                } else {
-                  // 略过其它未知角色
-                  return;
-                }
+                if (!contentEl) return;
+                const roleText = roleEl ? (roleEl.textContent || '') : '';
+                const speaker = inferSpeaker({
+                  roleText,
+                  className: contentEl.className || '',
+                });
+                if (!speaker) return;
                 const contentText = (contentEl.innerText || '').trim();
                 if (!contentText) return;
                 const icon = speaker === 'User' ? '👤' : '🤖';
